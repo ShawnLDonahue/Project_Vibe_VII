@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Project_Vibe_VII — EMOM Clock</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<style>
+  * {
+    box-sizing: border-box;
+    user-select: none;
+  }
+
+  body {
+    margin: 0;
+    background: black;
+    color: #00ff66;
+    font-family: "Courier New", monospace;
+    overflow: hidden;
+  }
+
+  #topBar {
+    position: fixed;
+    top: 10px;
+    left: 20px;
+    right: 20px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 18px;
+    opacity: 0.85;
+  }
+
+  #centerBlock {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90vw;
+    max-width: 1200px;
+    text-align: center;
+  }
+
+  #clock {
+    font-size: 16vw;
+    font-weight: bold;
+    letter-spacing: 1vw;
+    text-shadow:
+      0 0 15px currentColor,
+      0 0 35px currentColor,
+      0 0 60px currentColor;
+  }
+
+  /* ONLY CHANGE: width adjusted */
+  #startPauseBtn {
+    width: 50%;
+    margin-top: 20px;
+    padding: 28px 0;
+    font-size: 36px;
+    background: #111;
+    color: white;
+    border: 3px solid white;
+    cursor: pointer;
+  }
+
+  /* ONLY CHANGE: width adjusted */
+  #resetBtn {
+    width: 50%;
+    margin-top: 10px;
+    padding: 28px 0;
+    font-size: 36px;
+    background: #111;
+    color: white;
+    border: 3px solid white;
+    cursor: pointer;
+  }
+
+  #controls {
+    position: fixed;
+    bottom: 20px;
+    width: 100%;
+    text-align: center;
+    font-size: 18px;
+  }
+
+  select, button.small {
+    background: #111;
+    color: white;
+    border: 2px solid #444;
+    padding: 8px 14px;
+    font-size: 16px;
+    margin: 4px;
+    cursor: pointer;
+  }
+
+  .green { color: #00ff66; }
+  .red { color: #ff3333; }
+  .cyan { color: #00ffff; }
+  .orange { color: #ff9900; }
+
+  .rainbow {
+    animation: rainbow 5s linear infinite;
+  }
+
+  @keyframes rainbow {
+    0% { color: red; }
+    20% { color: orange; }
+    40% { color: yellow; }
+    60% { color: green; }
+    80% { color: cyan; }
+    100% { color: red; }
+  }
+
+  .usa {
+    animation: usa 2s infinite;
+  }
+
+  @keyframes usa {
+    0% { color: red; }
+    50% { color: white; }
+    100% { color: blue; }
+  }
+</style>
+</head>
+
+<body>
+
+<div id="topBar">
+  <div id="roundStatus">READY</div>
+  <div id="elapsedTime">00:00</div>
+</div>
+
+<div id="centerBlock">
+  <div id="clock">00:10</div>
+  <button id="startPauseBtn">START</button>
+  <button id="resetBtn">RESET</button>
+</div>
+
+<div id="controls">
+  EMOMs:
+  <select id="emomCount">
+    <option>5</option>
+    <option selected>10</option>
+    <option>15</option>
+    <option>20</option>
+  </select>
+
+  Theme:
+  <button class="small" onclick="setTheme('green')">Green</button>
+  <button class="small" onclick="setTheme('red')">Red</button>
+  <button class="small" onclick="setTheme('orange')">Orange</button>
+  <button class="small" onclick="setTheme('cyan')">Cyan</button>
+  <button class="small" onclick="setTheme('rainbow')">Rainbow</button>
+  <button class="small" onclick="setTheme('usa')">USA</button>
+
+  <button class="small" onclick="toggleFullscreen()">Fullscreen</button>
+</div>
+
+<script>
+  let totalEmoms = 10;
+  let currentRound = 0;
+  let secondsLeft = 10;
+  let running = false;
+  let phase = "prep";
+  let timer = null;
+  let elapsedSeconds = 0;
+
+  const clock = document.getElementById("clock");
+  const startPauseBtn = document.getElementById("startPauseBtn");
+  const roundStatus = document.getElementById("roundStatus");
+  const elapsedTime = document.getElementById("elapsedTime");
+
+  const beep = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+  const buzzer = new Audio("https://actions.google.com/sounds/v1/alarms/buzzer.ogg");
+  const whistle = new Audio("https://actions.google.com/sounds/v1/sports/whistle_single.ogg");
+
+  startPauseBtn.onclick = () => {
+    if (!running) start();
+    else pause();
+  };
+
+  function start() {
+    totalEmoms = parseInt(document.getElementById("emomCount").value);
+    running = true;
+    startPauseBtn.textContent = "PAUSE";
+    timer = setInterval(tick, 1000);
+  }
+
+  function pause() {
+    running = false;
+    startPauseBtn.textContent = "START";
+    clearInterval(timer);
+  }
+
+  function tick() {
+    secondsLeft--;
+    elapsedSeconds++;
+    updateElapsed();
+
+    if (secondsLeft <= 5 && phase === "emom" && currentRound < totalEmoms) {
+      beep.play();
+    }
+
+    if (secondsLeft < 0) {
+      if (phase === "prep") {
+        phase = "emom";
+        currentRound = 1;
+        secondsLeft = 60;
+        whistle.play();
+      } else {
+        roundStatus.textContent = `ROUND ${currentRound} COMPLETE`;
+        if (currentRound === totalEmoms) {
+          buzzer.play();
+          reset();
+          return;
+        } else {
+          currentRound++;
+          secondsLeft = 60;
+          whistle.play();
+        }
+      }
+    }
+
+    updateDisplay();
+  }
+
+  function reset() {
+    clearInterval(timer);
+    running = false;
+    phase = "prep";
+    secondsLeft = 10;
+    currentRound = 0;
+    elapsedSeconds = 0;
+    startPauseBtn.textContent = "START";
+    roundStatus.textContent = "DONE";
+    updateDisplay();
+    updateElapsed();
+  }
+
+  function updateDisplay() {
+    const m = Math.floor(secondsLeft / 60);
+    const s = secondsLeft % 60;
+    clock.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    if (phase === "emom") {
+      roundStatus.textContent = `ROUND ${currentRound} / ${totalEmoms}`;
+    }
+  }
+
+  function updateElapsed() {
+    const m = Math.floor(elapsedSeconds / 60);
+    const s = elapsedSeconds % 60;
+    elapsedTime.textContent = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+
+  function setTheme(theme) {
+    clock.className = "";
+    clock.classList.add(theme);
+  }
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  }
+
+  updateDisplay();
+  updateElapsed();
+</script>
+
+</body>
+</html>
